@@ -18,7 +18,7 @@ io.on('connection', (socket) => {
     io.emit('chat message', {msg: "A user has connected", name: "Admin"})
     
     socket.on("typing", (name) => {
-        io.emit('typing', name)
+        if (name != connectedMap[_id]) {io.emit('typing', name)}
     })
 
     socket.on('done typing', () => {
@@ -34,13 +34,17 @@ io.on('connection', (socket) => {
         io.emit('chat message', {msg: `${connectedMap[_id]} has disconnected`, name: "Admin"});
 
         delete connectedMap[_id]
-        
+
         io.emit('connected', connectedMap)
     })
 
     socket.on('chat message', (data) => {
       io.emit('chat message', data);
     });
+
+    socket.on('private', (data) => {
+        io.to(data.to).emit('private', {msg: data.msg, name: data.name});
+    })
 });
 
 server.listen(3000, () => {

@@ -21,6 +21,8 @@
     <span id="typing"></span>
     <form id="form" action="">
       <input id="nickname" autocomplete="off" value=""/>
+      <select name="private" id="private" style="width:100px">
+      </select>
       <input id="input" autocomplete="off" placeholder="YOU MUST CHOOSE A USERNAME BEFORE YOU CAN SEND MESSAGES" disabled/><button>Send</button>
     </form>
 
@@ -35,6 +37,8 @@
         var nickname = document.getElementById('nickname')
         var typing = document.getElementById('typing')
         var online = document.getElementById('online')
+        var private = document.getElementById('private')
+
         var searchTimeout
 
 
@@ -60,27 +64,50 @@
         })
 
         form.addEventListener('submit', function(e) {
+
             e.preventDefault();
             if (input.value) {
-                socket.emit('chat message', {msg: input.value, name: nickname.value});
-
                 var item = document.createElement('li');
-                item.textContent = nickname.value + ": " + input.value;
-                messages.appendChild(item);
-                window.scrollTo(0, document.body.scrollHeight);
 
-                input.value = '';
+                if (private.value != "") {
+                    socket.emit("private", {msg: input.value, to: private.value, name: nickname.value})
+                    item.textContent = "PRIVATE " + nickname.value + ": " + input.value;
+
+                } else {
+                    socket.emit('chat message', {msg: input.value, name: nickname.value});
+                    item.textContent = nickname.value + ": " + input.value;
+
+                }
+                    messages.appendChild(item);
+                    window.scrollTo(0, document.body.scrollHeight);
+
+                    input.value = '';
             }
         });
 
+        socket.on('private', function(data) {
+            var item = document.createElement('li');
+            item.textContent = 'PRIVATE ' + data.name + ": " + data.msg;
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight);
+        } )
+
         socket.on('connected', function(connected) {
             online.innerHTML = ''
+            private.innerHTML = ' <option value="" disabled selected>PM</option>';
+    
             for (const [key, value] of Object.entries(connected)) {
-                var item = document.createElement('li');
-                item.textContent = value
+                if (nickname.value != value) {
+                    var item = document.createElement('li');
+                    item.textContent = value
+                    online.appendChild(item)
 
-                online.appendChild(item)
-              }
+                    var opt = document.createElement('option');
+                    opt.value = key
+                    opt.textContent = value
+                    private.appendChild(opt);
+                }
+            }
         })
 
         socket.on('typing', function(name) {
