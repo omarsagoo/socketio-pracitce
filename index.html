@@ -16,9 +16,92 @@
     </style>
   </head>
   <body>
+    <ul id="online"></ul>
     <ul id="messages"></ul>
+    <span id="typing"></span>
     <form id="form" action="">
-      <input id="input" autocomplete="off" /><button>Send</button>
+      <input id="nickname" autocomplete="off" value=""/>
+      <input id="input" autocomplete="off" placeholder="YOU MUST CHOOSE A USERNAME BEFORE YOU CAN SEND MESSAGES" disabled/><button>Send</button>
     </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        
+        var socket = io();
+
+        var messages = document.getElementById('messages');
+        var form = document.getElementById('form');
+        var input = document.getElementById('input');
+        var nickname = document.getElementById('nickname')
+        var typing = document.getElementById('typing')
+        var online = document.getElementById('online')
+        var searchTimeout
+
+
+        nickname.addEventListener('keydown', function(e) {
+            if (searchTimeout != undefined) {clearTimeout(searchTimeout)}
+            
+            searchTimeout = setTimeout(function() {
+                socket.emit('connected', nickname.value)
+                nickname.disabled = true
+                input.disabled = false
+                input.placeholder = ""
+            }, 1000);
+        })
+
+        input.addEventListener('keydown', function(e) {
+            if (searchTimeout != undefined) {clearTimeout(searchTimeout)}
+
+            socket.emit('typing', nickname.value);
+
+            searchTimeout = setTimeout(function() {
+                socket.emit('done typing', nickname.value)
+            }, 1000);
+        })
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (input.value) {
+                socket.emit('chat message', {msg: input.value, name: nickname.value});
+
+                var item = document.createElement('li');
+                item.textContent = nickname.value + ": " + input.value;
+                messages.appendChild(item);
+                window.scrollTo(0, document.body.scrollHeight);
+
+                input.value = '';
+            }
+        });
+
+        socket.on('connected', function(connected) {
+            online.innerHTML = ''
+            for (const [key, value] of Object.entries(connected)) {
+                var item = document.createElement('li');
+                item.textContent = value
+
+                online.appendChild(item)
+              }
+        })
+
+        socket.on('typing', function(name) {
+            if (name != nickname.value) {
+                message = `${name} is typing ...`
+                typing.textContent = message
+            }
+        })
+
+        socket.on('done typing', function() {
+            typing.textContent = ''
+        });
+
+        socket.on('chat message', function(data) {
+            if (data.name != nickname.value) {
+                var item = document.createElement('li');
+                item.textContent = data.name + ": " + data.msg;
+                messages.appendChild(item);
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+        });
+    </script>
   </body>
 </html>
